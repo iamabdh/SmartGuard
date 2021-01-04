@@ -8,7 +8,7 @@ from kivy.core.audio import SoundLoader
 
 class SensorData (Label):
     def update (self, *args):
-        status = firebase.FirebaseApplication('https://esp-32-d8e67-default-rtdb.firebaseio.com/', None).get('/DATA', None)
+        status = firebase.FirebaseApplication('https:REALTIME_DATABASE_URL', None).get('/DATA', None)
         self.font_size = ('30sp')
         if status == 1:
             self.text = "Thief Spotted!!"
