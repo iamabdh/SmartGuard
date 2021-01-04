@@ -4,23 +4,23 @@
 #include <WiFi.h>
 #include "FirebaseESP32.h"
 
-#define FIREBASE_HOST "https://logic-30aa3.firebaseio.com/"
-#define FIREBASE_AUTH "gnnU1dVHVeqoW76JTcXPah5aYXZUeGOlrK1sUKCb"
-#define WIFI_SSID "Ooredoo_2.4Ghz_A7F51F"
-#define WIFI_PASSWORD "AAMPFABB"
+#define FIREBASE_HOST "https:REALTIME_DATABASE_URL"
+#define FIREBASE_AUTH "AUTH_KEY"
+#define WIFI_SSID "WIFI_NAME"
+#define WIFI_PASSWORD "WIFI_PASSWORD"
 // define firebase data object
 FirebaseData firebaseData;
 FirebaseJson json;
-int SensorPlace = A0;
 int Data;
 int SendingDB;
 
+
 void setup () {
-  Serial.begin(19200);
+  Serial.begin(115200);
   disableCore0WDT();
   disableCore1WDT();
   
-  pinMode(SensorPlace, INPUT);
+  
   
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("connecting to WIFI");
@@ -35,56 +35,64 @@ void setup () {
   Serial.println(WiFi.localIP());                                            //print local IP address
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);                              // connect to firebase
   Firebase.reconnectWiFi(true);
-  xTaskCreatePinnedToCore(Task1, "TSK1", 1024, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore(Task2, "TSK2", 1024, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore(Task3, "TSK3", 1024, NULL, 1, NULL, 0);
+  //Set database read timeout to 1 minute (max 15 minutes)
+  Firebase.setReadTimeout(firebaseData, 1000 * 60);
+  //tiny, small, medium, large and unlimited.
+  //Size and its write timeout e.g. tiny (1s), small (10s), medium (30s) and large (60s).
+  Firebase.setwriteSizeLimit(firebaseData, "tiny");
+  Serial.println("------------------------------------");
+  Serial.println("Connected...");
+  xTaskCreatePinnedToCore(Task1, "TSK1", 8192, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(Task2, "TSK2", 8192, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(Task3, "TSK3", 8192, NULL, 1, NULL, 0);
 }
 
 void loop()
 {
   
 }
-
-
-
-void Task1(void *pvParameters)
-{
-  (void) pvParameters;
-  int ADC_Value;
-
-  while(1)
-  {
-//    ADC_Value= analogRead(36);
-      Data = 2;
-      
-      vTaskDelay(250 / portTICK_PERIOD_MS);
-  }
-}
-
-void Task2(void *pvParameters) 
-{
-  (void) pvParameters;
- int underData;
- underData = Data;
-  while(1)
-  {
-    if (underData > 1) {
-      SendingDB = 1;
+void Task1(void *pvParameters)  {
+   (void) pvParameters;
+   
+  
+    while (1){
+      int APIR;
+      int DPIR=0;
+      DPIR = digitalRead(33);
+      APIR = analogRead(33);
+      Data=APIR;
+      Serial.printf("digital = %d, analog= %d\n", DPIR,APIR); 
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    else {
-      SendingDB = 0;
-    }
-    vTaskDelay(250 / portTICK_PERIOD_MS);
-  }
     
 }
 
-void Task3(void *pvParameters)  {
+void Task2(void *pvParameters)  { 
   (void) pvParameters;
+  int underData;  
+  
+  while(1){
+    underData = Data;
+    if (underData >= 3000 ){
+      SendingDB =1;
+      Serial.println("Should be one");
+    } else { 
+      SendingDB = 0;
+      Serial.println("Should be Zero");
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+  
+}
 
+
+
+void Task3(void *pvParameters)  {
+ 
+  (void) pvParameters;
     while(1) {
-      json.set("/SensorUpdate", SendingDB);
-      Firebase.updateNode(firebaseData, "/logic", json);
-      vTaskDelay(250 / portTICK_PERIOD_MS);
+      Firebase.setInt(firebaseData, "/DATA",SendingDB);
+      Serial.println("Data sent");
+     vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
